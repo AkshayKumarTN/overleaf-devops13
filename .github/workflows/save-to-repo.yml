@@ -1,0 +1,62 @@
+name: Save PDF to Repository
+
+on:
+  workflow_run:
+    workflows: ["Compile LaTeX Document"]
+    types:
+      - completed
+
+jobs:
+  save_pdf:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      
+      - name: List downloaded files
+        run: |
+          echo "Downloaded files:"
+          ls -la
+      
+      - name: Move PDFs to compiled-pdfs folder
+        run: |
+          mkdir -p compiled-pdfs
+          
+          # Find and copy PDF files
+          find . -name "*.pdf" -type f -exec cp {} compiled-pdfs/ \;
+          
+          # Create latest symlink
+          cd compiled-pdfs
+          LATEST=$(ls -t main-CL*.pdf | head -1)
+          if [ ! -z "$LATEST" ]; then
+            cp "$LATEST" main-latest.pdf
+          fi
+          
+          # Update changelog
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          
+          echo "# PDF Compilation History" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "## Latest Compilation" >> CHANGELOG.md
+          echo "- **Date:** $(date -u)" >> CHANGELOG.md
+          echo "- **Files:** $(ls *.pdf | wc -l) PDFs" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+      
+      - name: Commit PDFs
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📄 Save compiled PDFs [skip ci]"
+          file_pattern: 'compiled-pdfs/*'
