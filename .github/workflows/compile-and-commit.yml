@@ -19,7 +19,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Generate version information
         run: |
@@ -46,7 +45,6 @@ jobs:
           cp main.pdf "compiled-pdfs/${{ env.PDF_NAME }}"
           cp main.pdf compiled-pdfs/main-latest.pdf
           
-          # Create/update changelog
           if [ ! -f compiled-pdfs/CHANGELOG.md ]; then
             echo "# PDF Compilation History" > compiled-pdfs/CHANGELOG.md
             echo "" >> compiled-pdfs/CHANGELOG.md
@@ -55,7 +53,6 @@ jobs:
           echo "## CL${{ env.COMMIT_COUNT }} - ${{ env.COMMIT_HASH }}" >> compiled-pdfs/CHANGELOG.md
           echo "- **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> compiled-pdfs/CHANGELOG.md
           echo "- **Commit:** [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> compiled-pdfs/CHANGELOG.md
-          echo "- **Message:** ${{ github.event.head_commit.message }}" >> compiled-pdfs/CHANGELOG.md
           echo "- **PDF:** [${{ env.PDF_NAME }}](compiled-pdfs/${{ env.PDF_NAME }})" >> compiled-pdfs/CHANGELOG.md
           echo "" >> compiled-pdfs/CHANGELOG.md
       
@@ -66,13 +63,11 @@ jobs:
           path: compiled-pdfs/
           retention-days: 90
       
-      - name: Commit PDF back to repository
+      - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "📄 Auto-compile: CL${{ env.COMMIT_COUNT }} (${{ env.COMMIT_HASH }})"
           file_pattern: 'compiled-pdfs/*'
-          commit_user_name: github-actions[bot]
-          commit_user_email: github-actions[bot]@users.noreply.github.com
       
       - name: Create ZIP archive
         run: |
