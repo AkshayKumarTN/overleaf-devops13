@@ -1,0 +1,112 @@
+\documentclass{article}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Version info
+\input{version}
+
+\title{DevOps Assignment 7 \\ Automated LaTeX Compilation with GitHub Actions \\ \small \gitversion}
+\author{Akshay Kumar - Group 13}
+\date{\today}
+
+\pagestyle{fancy}
+\fancyhead[L]{DevOps Group 13}
+\fancyhead[R]{\gitversion}
+\fancyfoot[C]{Page \thepage\ of \pageref{LastPage}}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{gray!10}
+}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+This document demonstrates automated LaTeX compilation using GitHub Actions. Every time changes are pushed to the repository, a new PDF version is automatically generated with proper version tracking.
+
+\subsection{Project Goals}
+\begin{itemize}
+    \item Automatic compilation on git push
+    \item Version tracking with changelist numbers
+    \item PDF storage in repository and as artifacts
+    \item Self-hosted runner implementation
+    \item Docker containerization of build environment
+\end{itemize}
+
+\section{GitHub Actions Workflows}
+
+\subsection{Cloud Runner}
+The cloud runner workflow uses GitHub's hosted Ubuntu runners to compile the LaTeX document. This provides a clean, consistent build environment without requiring local infrastructure.
+
+\subsection{Self-Hosted Runner}
+The self-hosted runner runs on our own Overleaf server, providing:
+\begin{itemize}
+    \item Faster compilation (no cold start)
+    \item Access to local resources
+    \item Custom LaTeX packages
+    \item Full control over build environment
+\end{itemize}
+
+\section{Implementation Details}
+
+\subsection{Version Tracking}
+Each PDF includes a version number in the format: \texttt{CL\#\#\#-hash}
+\begin{itemize}
+    \item CL\#\#\#: Changelist number (total commit count)
+    \item hash: Short git commit hash (7 characters)
+    \item Date: Commit date
+\end{itemize}
+
+\subsection{Automated Workflow}
+\begin{enumerate}
+    \item Developer pushes changes to GitHub
+    \item GitHub Actions triggers automatically
+    \item Version information is generated
+    \item LaTeX document is compiled
+    \item PDF is saved to repository
+    \item ZIP archive is created
+    \item Artifacts are uploaded
+\end{enumerate}
+
+\section{Repository Structure}
+\begin{lstlisting}
+overleaf-devops13/
+|-- main.tex              (This document)
+|-- version.tex           (Auto-generated version info)
+|-- .github/
+|   `-- workflows/
+|       |-- compile-latex.yml
+|       |-- compile-and-commit.yml
+|       `-- compile-local-runner.yml
+|-- compiled-pdfs/        (Cloud-compiled PDFs)
+|-- local-compiled/       (Self-hosted compiled PDFs)
+`-- README.md
+\end{lstlisting}
+
+\section{Testing and Verification}
+This section will be updated with test results as the system is validated.
+
+\section{Conclusion}
+Automated LaTeX compilation with GitHub Actions provides a robust, reproducible document build system. The combination of cloud and self-hosted runners offers flexibility and reliability.
+
+\section{References}
+\begin{itemize}
+    \item GitHub Actions Documentation: \url{https://docs.github.com/en/actions}
+    \item LaTeX Project: \url{https://www.latex-project.org/}
+    \item Domain: devops-13-overleaf.me
+    \item Repository: \url{https://github.com/AkshayKumarTN/overleaf-devops13}
+\end{itemize}
+
+\end{document}

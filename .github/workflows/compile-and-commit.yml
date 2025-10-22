@@ -1,0 +1,92 @@
+name: Compile and Commit PDF
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.tex'
+      - '**.bib'
+  workflow_dispatch:
+
+jobs:
+  build_and_commit:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Generate version information
+        run: |
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          COMMIT_DATE=$(git log -1 --format=%cd --date=short)
+          
+          echo "\\newcommand{\\gitversion}{Version: CL$COMMIT_COUNT-$COMMIT_HASH ($COMMIT_DATE)}" > version.tex
+          
+          echo "COMMIT_HASH=$COMMIT_HASH" >> $GITHUB_ENV
+          echo "COMMIT_COUNT=$COMMIT_COUNT" >> $GITHUB_ENV
+          echo "PDF_NAME=main-CL$COMMIT_COUNT-$COMMIT_HASH.pdf" >> $GITHUB_ENV
+      
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main.tex
+          args: -pdf -interaction=nonstopmode -file-line-error
+      
+      - name: Prepare PDF for commit
+        run: |
+          mkdir -p compiled-pdfs
+          
+          cp main.pdf "compiled-pdfs/${{ env.PDF_NAME }}"
+          cp main.pdf compiled-pdfs/main-latest.pdf
+          
+          # Create/update changelog
+          if [ ! -f compiled-pdfs/CHANGELOG.md ]; then
+            echo "# PDF Compilation History" > compiled-pdfs/CHANGELOG.md
+            echo "" >> compiled-pdfs/CHANGELOG.md
+          fi
+          
+          echo "## CL${{ env.COMMIT_COUNT }} - ${{ env.COMMIT_HASH }}" >> compiled-pdfs/CHANGELOG.md
+          echo "- **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> compiled-pdfs/CHANGELOG.md
+          echo "- **Commit:** [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})" >> compiled-pdfs/CHANGELOG.md
+          echo "- **Message:** ${{ github.event.head_commit.message }}" >> compiled-pdfs/CHANGELOG.md
+          echo "- **PDF:** [${{ env.PDF_NAME }}](compiled-pdfs/${{ env.PDF_NAME }})" >> compiled-pdfs/CHANGELOG.md
+          echo "" >> compiled-pdfs/CHANGELOG.md
+      
+      - name: Upload as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-with-changelog-CL${{ env.COMMIT_COUNT }}
+          path: compiled-pdfs/
+          retention-days: 90
+      
+      - name: Commit PDF back to repository
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add compiled-pdfs/
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "📄 Auto-compile: CL${{ env.COMMIT_COUNT }} (${{ env.COMMIT_HASH }}) [skip ci]"
+            git push
+          fi
+      
+      - name: Create ZIP archive
+        run: |
+          cd compiled-pdfs
+          zip -r ../devops13-CL${{ env.COMMIT_COUNT }}.zip *
+          cd ..
+      
+      - name: Upload ZIP as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-archive-CL${{ env.COMMIT_COUNT }}
+          path: "*.zip"
+          retention-days: 90
