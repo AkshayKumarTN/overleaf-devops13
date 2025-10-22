@@ -67,18 +67,12 @@ jobs:
           retention-days: 90
       
       - name: Commit PDF back to repository
-        run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          
-          git add compiled-pdfs/
-          
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "📄 Auto-compile: CL${{ env.COMMIT_COUNT }} (${{ env.COMMIT_HASH }}) [skip ci]"
-            git push
-          fi
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📄 Auto-compile: CL${{ env.COMMIT_COUNT }} (${{ env.COMMIT_HASH }})"
+          file_pattern: 'compiled-pdfs/*'
+          commit_user_name: github-actions[bot]
+          commit_user_email: github-actions[bot]@users.noreply.github.com
       
       - name: Create ZIP archive
         run: |
