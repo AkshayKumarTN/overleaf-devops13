@@ -20,10 +20,11 @@ jobs:
           ref: main
       
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
+          merge-multiple: true
       
       - name: List downloaded files
         run: |
@@ -34,26 +35,28 @@ jobs:
         run: |
           mkdir -p compiled-pdfs
           
-          # Find and copy PDF files
           find . -name "*.pdf" -type f -exec cp {} compiled-pdfs/ \;
           
-          # Create latest symlink
           cd compiled-pdfs
-          LATEST=$(ls -t main-CL*.pdf | head -1)
+          LATEST=$(ls -t main-CL*.pdf 2>/dev/null | head -1)
           if [ ! -z "$LATEST" ]; then
             cp "$LATEST" main-latest.pdf
           fi
           
-          # Update changelog
           COMMIT_COUNT=$(git rev-list --count HEAD)
           COMMIT_HASH=$(git rev-parse --short HEAD)
           
-          echo "# PDF Compilation History" > CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "## Latest Compilation" >> CHANGELOG.md
-          echo "- **Date:** $(date -u)" >> CHANGELOG.md
-          echo "- **Files:** $(ls *.pdf | wc -l) PDFs" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# PDF Compilation History" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+          fi
+          
+          {
+            echo "## Latest Compilation - CL$COMMIT_COUNT"
+            echo "- **Date:** $(date -u)"
+            echo "- **Files:** $(ls *.pdf 2>/dev/null | wc -l) PDFs"
+            echo ""
+          } >> CHANGELOG.md
       
       - name: Commit PDFs
         uses: stefanzweifel/git-auto-commit-action@v5
