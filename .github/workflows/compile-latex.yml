@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - '**.tex'
+      - '**.bib'
   workflow_dispatch:
 
 jobs:
@@ -13,15 +16,26 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up LaTeX
-        uses: xu-cheng/latex-action@v3
         with:
-          root_file: main.tex
-          latexmk_use_lualatex: true
+          fetch-depth: 0
 
-      - name: Upload compiled PDF
+      - name: Generate version information
+        run: |
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          COMMIT_DATE=$(git log -1 --format=%cd --date=short)
+
+          echo "\\newcommand{\\gitversion}{Version: CL$COMMIT_COUNT-$COMMIT_HASH ($COMMIT_DATE)}" > version.tex
+          
+          # Rename PDF to include version
+          pdflatex -interaction=nonstopmode -file-line-error main.tex
+          mv main.pdf "main-CL${COMMIT_COUNT}-${COMMIT_HASH}.pdf"
+          cp "main-CL${COMMIT_COUNT}-${COMMIT_HASH}.pdf" main-latest.pdf
+
+      - name: Upload PDFs as artifact
         uses: actions/upload-artifact@v4
         with:
           name: compiled-pdf
-          path: main.pdf
+          path: |
+            main-CL${{ env.COMMIT_COUNT }}-${{ env.COMMIT_HASH }}.pdf
+            main-latest.pdf

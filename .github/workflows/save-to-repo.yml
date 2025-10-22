@@ -10,6 +10,8 @@ jobs:
   save_pdf:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -23,13 +25,30 @@ jobs:
           name: compiled-pdf
           path: ./compiled-pdfs
 
-      - name: Commit and push PDF
+      - name: Update CHANGELOG and latest PDF
         run: |
           mkdir -p compiled-pdfs
-          mv ./compiled-pdfs/main.pdf ./compiled-pdfs/main-latest.pdf
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add compiled-pdfs/
-          git commit -m "📄 Auto-update compiled PDFs [skip ci]" || echo "No changes to commit"
-          git pull --rebase origin main
-          git push origin main
+          cd compiled-pdfs
+          
+          # Set main-latest.pdf
+          LATEST=$(ls main-CL*.pdf 2>/dev/null | head -1)
+          if [ ! -z "$LATEST" ]; then
+            cp "$LATEST" main-latest.pdf
+          fi
+
+          # Update changelog
+          if [ ! -f CHANGELOG.md ]; then
+            echo "# PDF Compilation History" > CHANGELOG.md
+            echo "" >> CHANGELOG.md
+          fi
+
+          echo "## Latest Compilation - $(date -u)" >> CHANGELOG.md
+          echo "- **Files:** $(ls *.pdf | wc -l) PDFs" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          cd ..
+
+      - name: Commit PDFs
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📄 Save compiled PDFs [skip ci]"
+          file_pattern: 'compiled-pdfs/*'
