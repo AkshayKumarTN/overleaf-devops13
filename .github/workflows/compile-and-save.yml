@@ -1,0 +1,52 @@
+name: Compile and Save PDF
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '**.tex'
+      - '**.bib'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Generate version
+        run: |
+          HASH=$(git rev-parse --short HEAD)
+          COUNT=$(git rev-list --count HEAD)
+          DATE=$(git log -1 --format=%cd --date=short)
+          echo "\\newcommand{\\gitversion}{Version: CL$COUNT-$HASH ($DATE)}" > version.tex
+          echo "COUNT=$COUNT" >> $GITHUB_ENV
+          echo "HASH=$HASH" >> $GITHUB_ENV
+      
+      - name: Compile LaTeX
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main.tex
+      
+      - name: Prepare outputs
+        run: |
+          mkdir -p compiled-pdfs
+          cp main.pdf "compiled-pdfs/main-CL${{ env.COUNT }}-${{ env.HASH }}.pdf"
+          cp main.pdf compiled-pdfs/main-latest.pdf
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pdf-CL${{ env.COUNT }}
+          path: compiled-pdfs/
+      
+      - name: Save to repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "📄 PDF: CL${{ env.COUNT }}-${{ env.HASH }} [skip ci]"
+          file_pattern: 'compiled-pdfs/*'
