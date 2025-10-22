@@ -8,6 +8,10 @@ on:
       - '**.bib'
   workflow_dispatch:
 
+concurrency:
+  group: latex-compile-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build_and_commit:
     runs-on: ubuntu-latest
@@ -63,11 +67,12 @@ jobs:
           path: compiled-pdfs/
           retention-days: 90
       
-      - name: Commit and push changes
+      - name: Commit and push PDF
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "📄 Auto-compile: CL${{ env.COMMIT_COUNT }} (${{ env.COMMIT_HASH }})"
+          commit_message: "📄 Auto-compile: CL${{ env.COMMIT_COUNT }} (${{ env.COMMIT_HASH }}) [skip ci]"
           file_pattern: 'compiled-pdfs/*'
+          push_options: '--force'
       
       - name: Create ZIP archive
         run: |
